@@ -4,7 +4,13 @@
 [![Course: BBT 2103](https://img.shields.io/badge/Course-BBT_2103_Software_Engineering-green)](#)
 
 > **Requirements Analysis & Work Plan**  
-> **Group Members:** [Insert Names and Registration Numbers Here]
+> **Group Members:** 
+Daudi Makumbi  (189657)
+Ahmed Hussein  (193285)
+Makana Nicholas  (191314)
+More Adtiya  (193384)
+Namara Joshua  (192582)
+Chege Ashley  (172445)
 
 Welcome to the **Clinic Management System** repository! This document outlines the foundational requirements, task allocations, and the tools our team will use to design and develop the platform.
 
@@ -32,7 +38,7 @@ The requirements were gathered by analysing the problem statement, considering t
 
 ## 2. Functional Requirements
 
-Functional requirements define what the system must do — the specific features, behaviours, and interactions available to each user role.
+Functional requirements define what the system must do basicallythe specific features, behaviours, and interactions available to each user role.
 
 ### 2.1  Patient Requirements
 - **`FR1.`** Allow a patient to register for an account using their personal details.
