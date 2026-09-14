@@ -121,7 +121,7 @@ We will use informal interviews (role-playing as patients, doctors, and hospital
 -  **Disadvantage:** Formatting can become inconsistent without agreed style guidelines.
 -  **Disadvantage:** Requires a stable internet connection for real-time collaboration.
 
-### 5.3  Trello (Task/Project Management)
+### 5.3  Trello (Task / Project Management)
 -  **Advantage:** Visual Kanban boards make it easy to see task status (*To Do, In Progress, Done*) at a glance.
 -  **Advantage:** Free for small teams and simple to learn.
 -  **Disadvantage:** Limited reporting and analytics features compared to Jira.
