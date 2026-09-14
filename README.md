@@ -38,7 +38,7 @@ The requirements were gathered by analysing the problem statement, considering t
 
 ## 2. Functional Requirements
 
-Functional requirements define what the system must do basicallythe specific features, behaviours, and interactions available to each user role.
+Functional requirements define what the system must do basically the specific features, behaviours, and interactions available to each user role.
 
 ### 2.1  Patient Requirements
 - **`FR1.`** Allow a patient to register for an account using their personal details.
@@ -71,7 +71,7 @@ Functional requirements define what the system must do basicallythe specific fea
 
 ## 3. Non-Functional Requirements
 
-Non-functional requirements define how the system should perform — the quality attributes and constraints under which it must operate.
+Non-functional requirements define how the system should perform the quality attributes and constraints under which it must operate.
 
 | Category | Requirement |
 | :--- | :--- |
