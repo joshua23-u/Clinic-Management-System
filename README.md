@@ -115,7 +115,7 @@ We will use informal interviews (role-playing as patients, doctors, and hospital
 -  **Disadvantage:** Requirements may be biased since they are based on assumptions rather than direct input.
 -  **Disadvantage:** Without a structured checklist, some non-functional requirements may be overlooked.
 
-### 5.2 📄 Google Docs / Microsoft Word (Documentation)
+### 5.2  Google Docs / Microsoft Word (Documentation)
 -  **Advantage:** Supports real-time collaborative editing.
 -  **Advantage:** Version history makes it easy to track changes and revert mistakes.
 -  **Disadvantage:** Formatting can become inconsistent without agreed style guidelines.
