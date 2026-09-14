@@ -12,7 +12,7 @@ More Adtiya  (193384)
 Namara Joshua  (192582)
 Chege Ashley  (172445)
 
-Welcome to the **Clinic Management System** repository! This document outlines the foundational requirements, task allocations, and the tools our team will use to design and develop the platform.
+Welcome to the **Clinic Management System** repository! This document outlines the foundational requirements, task allocations, and the tools our team will use to design and develop the platform..
 
 ---
 
