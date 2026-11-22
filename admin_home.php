@@ -2,6 +2,10 @@
 session_start();
 include 'db.php';
 
+// Prevent the browser from showing this page from cache after logout
+header("Cache-Control: no-store, no-cache, must-revalidate, max-age=0");
+header("Pragma: no-cache");
+header("Expires: 0");
 
 // if the user is an admin
 if (!isset($_SESSION['user_id']) || $_SESSION['role'] != 'admin') {
@@ -99,7 +103,7 @@ $total_feedback = $conn->query("SELECT COUNT(*) as c FROM feedback")->fetch_asso
 
     <div class="admin-tabs">
         <a href="admin_home.php?page=doctors" class="<?php echo ($page=='doctors')?'active':''; ?>">Doctor Records</a>
-        <a href="admin_home.php?page=patients" class="<?php echo ($page=='patients')?'active':''; ?>">Patient Lookup</a>
+        <a href="admin_home.php?page=patients" class="<?php echo ($page=='patients')?'active':''; ?>">Patient Records</a>
         <a href="admin_home.php?page=appointments" class="<?php echo ($page=='appointments')?'active':''; ?>">Appointments & Feedback</a>
     </div>
 
@@ -188,72 +192,116 @@ $total_feedback = $conn->query("SELECT COUNT(*) as c FROM feedback")->fetch_asso
     <?php endif; ?>
 
 
-    <?php if ($page == 'patients'): 
+    <?php if ($page == 'patients'):
 
-        $search_patient = isset($_GET['search_patient']) ? $_GET['search_patient'] : '';
+        $search_patient = isset($_GET['search_patient']) ? trim($_GET['search_patient']) : '';
+
+        // List of patients (all, or filtered by search)
+        $base_sql = "SELECT id, full_name, phone, email FROM users WHERE role='patient'";
+        if ($search_patient != '') {
+            $search_id = (int) str_ireplace('P-', '', $search_patient);
+            $like = "%$search_patient%";
+            $stmt = $conn->prepare($base_sql . " AND (id = ? OR full_name LIKE ? OR phone LIKE ? OR email LIKE ?) ORDER BY full_name ASC");
+            $stmt->bind_param("isss", $search_id, $like, $like, $like);
+        } else {
+            $stmt = $conn->prepare($base_sql . " ORDER BY full_name ASC");
+        }
+        $stmt->execute();
+        $patients = $stmt->get_result();
+
+        // Selected patient's record (when "View Records" is clicked)
         $patient_data = null;
         $patient_treatments = null;
+        if (isset($_GET['view'])) {
+            $view_id = (int) $_GET['view'];
 
-        if ($search_patient != '') {
-            $search_id = str_replace('P-', '', $search_patient);
-            
-            $sql = "SELECT * FROM users WHERE role='patient' AND (id = '$search_id' OR full_name LIKE '%$search_patient%')";
-            $result = $conn->query($sql);
-            
-            if ($result->num_rows > 0) {
-                $patient_data = $result->fetch_assoc();
-                $p_id = $patient_data['id'];
-                $patient_treatments = $conn->query("
+            $stmt = $conn->prepare("SELECT id, full_name, phone, email FROM users WHERE id = ? AND role = 'patient'");
+            $stmt->bind_param("i", $view_id);
+            $stmt->execute();
+            $patient_data = $stmt->get_result()->fetch_assoc();
+
+            if ($patient_data) {
+                $stmt = $conn->prepare("
                     SELECT t.*, u.full_name as doctor_name 
                     FROM treatments t 
                     JOIN users u ON t.doctor_id = u.id 
-                    WHERE t.patient_id = $p_id 
+                    WHERE t.patient_id = ?
                     ORDER BY t.treatment_date DESC
                 ");
+                $stmt->bind_param("i", $view_id);
+                $stmt->execute();
+                $patient_treatments = $stmt->get_result();
             }
         }
         ?>
 
-        <h3>Patient lookup</h3>
+        <h3>Search patients</h3>
         <form method="GET" action="admin_home.php" class="inline-form">
             <input type="hidden" name="page" value="patients">
-            <input type="text" name="search_patient" placeholder="e.g. P-1042 or Jane" value="<?php echo htmlspecialchars($search_patient); ?>" style="max-width:400px;">
-            <button type="submit" style="background:#3182ce; color:white; border:none; padding:10px 30px; cursor:pointer;">Search</button>
+            <input type="text" name="search_patient" placeholder="Name, phone, email or ID (e.g. P-0007)" value="<?php echo htmlspecialchars($search_patient); ?>">
+            <button type="submit" style="background:#3182ce; color:white; border:none; padding:10px 20px; cursor:pointer;">Search</button>
         </form>
 
-        <?php if ($patient_data): ?>
-            <div style="background:white; border:1px solid #cbd5e0; padding:20px; margin-top:20px;">
-                <h2 style="margin-bottom:5px;"><?php echo htmlspecialchars($patient_data['full_name']); ?></h2>
-                <p style="font-size:13px; color:#718096;">
+        <table class="data-table">
+            <tr>
+                <th>ID</th>
+                <th>Name</th>
+                <th>Phone</th>
+                <th>Email</th>
+                <th>Actions</th>
+            </tr>
+            <?php if ($patients->num_rows == 0): ?>
+                <tr><td colspan="5">No patients found.</td></tr>
+            <?php else: ?>
+                <?php while($row = $patients->fetch_assoc()): ?>
+                <tr>
+                    <td>P-<?php echo str_pad($row['id'], 4, '0', STR_PAD_LEFT); ?></td>
+                    <td><?php echo htmlspecialchars($row['full_name']); ?></td>
+                    <td><?php echo htmlspecialchars($row['phone']); ?></td>
+                    <td><?php echo htmlspecialchars($row['email']); ?></td>
+                    <td>
+                        <a href="admin_home.php?page=patients&view=<?php echo $row['id']; ?>&search_patient=<?php echo urlencode($search_patient); ?>#patient-details" class="btn-small btn-blue">View Records</a>
+                    </td>
+                </tr>
+                <?php endwhile; ?>
+            <?php endif; ?>
+        </table>
+
+        <?php if (isset($_GET['view'])): ?>
+        <div class="admin-form-box" id="patient-details">
+            <?php if ($patient_data): ?>
+                <h3><?php echo htmlspecialchars($patient_data['full_name']); ?></h3>
+                <p style="font-size:13px;">
                     Patient ID: P-<?php echo str_pad($patient_data['id'], 4, '0', STR_PAD_LEFT); ?> | 
                     Phone: <?php echo htmlspecialchars($patient_data['phone']); ?> | 
                     Email: <?php echo htmlspecialchars($patient_data['email']); ?>
                 </p>
-            </div>
 
-            <h3 style="margin-top:30px;">Past treatments</h3>
-            <table class="data-table">
-                <tr>
-                    <th>Date</th>
-                    <th>Doctor</th>
-                    <th>Diagnosis</th>
-                    <th>Treatment / notes</th>
-                </tr>
-                <?php if ($patient_treatments->num_rows == 0): ?>
-                    <tr><td colspan="4">No treatments found for this patient.</td></tr>
-                <?php else: ?>
-                    <?php while($t = $patient_treatments->fetch_assoc()): ?>
+                <h3 style="margin-top:24px;">Past treatments</h3>
+                <table class="data-table">
                     <tr>
-                        <td><?php echo date('d M Y', strtotime($t['treatment_date'])); ?></td>
-                        <td><?php echo htmlspecialchars($t['doctor_name']); ?></td>
-                        <td><?php echo htmlspecialchars($t['diagnosis']); ?></td>
-                        <td><?php echo htmlspecialchars($t['notes']); ?></td>
+                        <th>Date</th>
+                        <th>Doctor</th>
+                        <th>Diagnosis</th>
+                        <th>Treatment / notes</th>
                     </tr>
-                    <?php endwhile; ?>
-                <?php endif; ?>
-            </table>
-        <?php elseif ($search_patient != ''): ?>
-            <p style="margin-top:20px; color:#c53030;">No patient found matching "<?php echo htmlspecialchars($search_patient); ?>".</p>
+                    <?php if ($patient_treatments->num_rows == 0): ?>
+                        <tr><td colspan="4">No treatments found for this patient.</td></tr>
+                    <?php else: ?>
+                        <?php while($t = $patient_treatments->fetch_assoc()): ?>
+                        <tr>
+                            <td><?php echo date('d M Y', strtotime($t['treatment_date'])); ?></td>
+                            <td><?php echo htmlspecialchars($t['doctor_name']); ?></td>
+                            <td><?php echo htmlspecialchars($t['diagnosis']); ?></td>
+                            <td><?php echo htmlspecialchars($t['notes']); ?></td>
+                        </tr>
+                        <?php endwhile; ?>
+                    <?php endif; ?>
+                </table>
+            <?php else: ?>
+                <p>Patient record not found.</p>
+            <?php endif; ?>
+        </div>
         <?php endif; ?>
 
     <?php endif; ?>
@@ -261,16 +309,13 @@ $total_feedback = $conn->query("SELECT COUNT(*) as c FROM feedback")->fetch_asso
     <?php if ($page == 'appointments'): ?>
         
         <?php
-       
-        $filter_date = isset($_GET['filter_date']) ? $_GET['filter_date'] : date('Y-m-d');
-        
+        // Show ALL appointments (newest date first, then by time)
         $appts = $conn->query("
             SELECT a.*, p.full_name as patient_name, d.full_name as doctor_name, d.specialty 
             FROM appointments a
             JOIN users p ON a.patient_id = p.id
             JOIN users d ON a.doctor_id = d.id
-            WHERE a.appointment_date = '$filter_date'
-            ORDER BY a.appointment_time ASC
+            ORDER BY a.appointment_date DESC, a.appointment_time ASC
         ");
 
         $feedbacks = $conn->query("
@@ -282,15 +327,11 @@ $total_feedback = $conn->query("SELECT COUNT(*) as c FROM feedback")->fetch_asso
         ");
         ?>
 
-        <h3>Appointments by date</h3>
-        <form method="GET" action="admin_home.php" class="inline-form">
-            <input type="hidden" name="page" value="appointments">
-            <input type="date" name="filter_date" value="<?php echo $filter_date; ?>" style="max-width:200px;">
-            <button type="submit" style="background:#3182ce; color:white; border:none; padding:10px 30px; cursor:pointer;">Show</button>
-        </form>
+        <h3>All appointments</h3>
 
         <table class="data-table">
             <tr>
+                <th>Date</th>
                 <th>Time</th>
                 <th>Patient</th>
                 <th>Doctor</th>
@@ -298,10 +339,11 @@ $total_feedback = $conn->query("SELECT COUNT(*) as c FROM feedback")->fetch_asso
                 <th>Status</th>
             </tr>
             <?php if ($appts->num_rows == 0): ?>
-                <tr><td colspan="5">No appointments found for this date.</td></tr>
+                <tr><td colspan="6">No appointments found.</td></tr>
             <?php else: ?>
                 <?php while($row = $appts->fetch_assoc()): ?>
                 <tr>
+                    <td><?php echo date('d M Y', strtotime($row['appointment_date'])); ?></td>
                     <td><?php echo date('H:i', strtotime($row['appointment_time'])); ?></td>
                     <td><?php echo htmlspecialchars($row['patient_name']); ?></td>
                     <td><?php echo htmlspecialchars($row['doctor_name']); ?></td>
