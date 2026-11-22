@@ -2,7 +2,7 @@
 session_start();
 include 'db.php';
 
-
+// 1. SECURITY CHECK
 if (!isset($_SESSION['user_id']) || $_SESSION['role'] != 'doctor') {
     header("Location: login.php");
     exit;
@@ -10,7 +10,7 @@ if (!isset($_SESSION['user_id']) || $_SESSION['role'] != 'doctor') {
 
 $doctor_id = $_SESSION['user_id'];
 
-
+// 2. HANDLE CANCEL / RESCHEDULE
 if (isset($_POST['update_appointment'])) {
     $appt_id = $_POST['appointment_id'];
     $action = $_POST['action'];
@@ -30,7 +30,7 @@ if (isset($_POST['update_appointment'])) {
     exit;
 }
 
-
+// 3. HANDLE ADD TREATMENT
 if (isset($_POST['add_treatment'])) {
     $pat_id = $_POST['patient_id'];
     $diag = $_POST['diagnosis'];
@@ -47,7 +47,7 @@ if (isset($_POST['add_treatment'])) {
 $page = isset($_GET['page']) ? $_GET['page'] : 'schedule';
 $filter_date = isset($_GET['filter_date']) ? $_GET['filter_date'] : date('Y-m-d');
 
-
+// 4. FETCH APPOINTMENTS
 $appts = $conn->query("
     SELECT a.*, u.full_name as patient_name, u.id as p_id 
     FROM appointments a 
@@ -56,7 +56,7 @@ $appts = $conn->query("
     ORDER BY a.appointment_time ASC
 ");
 
-
+// 5. FETCH PATIENTS FOR TREATMENT
 $patients = $conn->query("
     SELECT DISTINCT u.id, u.full_name 
     FROM appointments a 
@@ -91,7 +91,7 @@ $patients = $conn->query("
         <div class="alert alert-success" style="margin-top:20px;">Treatment record saved successfully.</div>
     <?php endif; ?>
 
-   
+    <!-- PAGE 1: MY SCHEDULE -->
     <?php if ($page == 'schedule'): ?>
         <h2 style="margin-bottom:20px;">My appointments</h2>
         
@@ -138,7 +138,7 @@ $patients = $conn->query("
         </table>
     <?php endif; ?>
 
-    
+    <!-- PAGE 2: CHANGE APPOINTMENT -->
     <?php if ($page == 'change'): 
         $appt_id = $_GET['id'];
         $appt = $conn->query("SELECT a.*, u.full_name as pat_name FROM appointments a JOIN users u ON a.patient_id = u.id WHERE a.id=$appt_id AND a.doctor_id=$doctor_id")->fetch_assoc();
@@ -190,12 +190,12 @@ $patients = $conn->query("
         </form>
     <?php endif; ?>
 
-  
+    <!-- PAGE 3: PATIENTS & TREATMENTS -->
     <?php if ($page == 'patients'): ?>
         <h2 style="margin-bottom:20px;">Patients & Add Treatment</h2>
         
         <div style="display:flex; gap:20px;">
-            
+            <!-- Add Treatment Form -->
             <div style="flex:1; background:white; border:1px solid #cbd5e0; padding:20px;">
                 <h3>Add Treatment Record</h3>
                 <form method="POST" action="doctor_home.php">
@@ -217,7 +217,7 @@ $patients = $conn->query("
                 </form>
             </div>
 
-            
+            <!-- My Patients List -->
             <div style="flex:1; background:white; border:1px solid #cbd5e0; padding:20px;">
                 <h3>My Patients</h3>
                 <p style="font-size:13px; color:#718096; margin-top:10px;">Patients who have booked appointments with you will appear in the dropdown menu.</p>
