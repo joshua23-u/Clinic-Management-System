@@ -437,3 +437,11 @@ input[disabled] { background: var(--tint-100) !important; color: var(--muted); }
 @media (prefers-reduced-motion: reduce) {
     * { transition: none !important; }
 }
+/* Slot legend and "your booking" slot */
+.slot-legend { display: flex; flex-wrap: wrap; gap: 18px; font-size: 13px; color: var(--muted); margin: 6px 0 4px; }
+.slot-legend span { display: inline-flex; align-items: center; gap: 8px; }
+.slot-legend i { width: 14px; height: 14px; border-radius: 50%; display: inline-block; border: 1.5px solid var(--line); background: var(--white); }
+.slot-legend i.sel  { background: var(--primary); border-color: var(--primary); }
+.slot-legend i.off  { background: var(--tint-50); border-color: var(--tint-100); }
+.slot-legend i.mine { background: var(--tint-100); border-color: var(--primary); }
+.slot.booked.mine { background: var(--tint-100); color: var(--primary-dark); border-color: var(--primary); text-decoration: none; }

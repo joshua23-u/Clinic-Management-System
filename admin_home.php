@@ -1,6 +1,7 @@
 <?php
 session_start();
 include 'db.php';
+include_once 'appointment_helpers.php';
 
 // Prevent the browser from showing this page from cache after logout
 header("Cache-Control: no-store, no-cache, must-revalidate, max-age=0");
@@ -42,7 +43,18 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
 
     
     if (isset($_POST['delete_doctor'])) {
-        $id = $_POST['delete_id'];
+        $id = (int) $_POST['delete_id'];
+
+        // A doctor with appointments must be kept so patients' records stay intact
+        $stmt = $conn->prepare("SELECT id FROM appointments WHERE doctor_id = ? LIMIT 1");
+        $stmt->bind_param("i", $id);
+        $stmt->execute();
+        $stmt->store_result();
+        if ($stmt->num_rows > 0) {
+            header("Location: admin_home.php?page=doctors&msg=has_appointments");
+            exit;
+        }
+
         $stmt = $conn->prepare("DELETE FROM users WHERE id = ? AND role = 'doctor'");
         $stmt->bind_param("i", $id);
         $stmt->execute();
@@ -52,6 +64,8 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
 }
 
 
+refresh_appointment_statuses($conn);
+
 $page = isset($_GET['page']) ? $_GET['page'] : 'doctors';
 
 $total_doctors = $conn->query("SELECT COUNT(*) as c FROM users WHERE role='doctor'")->fetch_assoc()['c'];
@@ -59,6 +73,7 @@ $total_patients = $conn->query("SELECT COUNT(*) as c FROM users WHERE role='pati
 
 $todays_appointments = $conn->query("SELECT COUNT(*) as c FROM appointments WHERE appointment_date = CURDATE()")->fetch_assoc()['c'];
 $total_feedback = $conn->query("SELECT COUNT(*) as c FROM feedback")->fetch_assoc()['c'];
+$completed_appointments = $conn->query("SELECT COUNT(*) as c FROM appointments WHERE status='Done'")->fetch_assoc()['c'];
 
 ?>
 <!DOCTYPE html>
@@ -96,6 +111,10 @@ $total_feedback = $conn->query("SELECT COUNT(*) as c FROM feedback")->fetch_asso
             <p>Today's appointments</p>
         </div>
         <div class="summary-card">
+            <h2><?php echo $completed_appointments; ?></h2>
+            <p>Completed appointments</p>
+        </div>
+        <div class="summary-card">
             <h2><?php echo $total_feedback; ?></h2>
             <p>New feedback</p>
         </div>
@@ -111,17 +130,28 @@ $total_feedback = $conn->query("SELECT COUNT(*) as c FROM feedback")->fetch_asso
         
         $edit_doc = null;
         if (isset($_GET['edit'])) {
-            $edit_id = $_GET['edit'];
-            $edit_doc = $conn->query("SELECT * FROM users WHERE id=$edit_id AND role='doctor'")->fetch_assoc();
+            $edit_id = (int) $_GET['edit'];
+            $stmt = $conn->prepare("SELECT * FROM users WHERE id = ? AND role = 'doctor'");
+            $stmt->bind_param("i", $edit_id);
+            $stmt->execute();
+            $edit_doc = $stmt->get_result()->fetch_assoc();
         }
 
-        $search = isset($_GET['search']) ? $_GET['search'] : '';
-        $sql = "SELECT * FROM users WHERE role='doctor'";
+        $search = isset($_GET['search']) ? trim($_GET['search']) : '';
         if ($search != '') {
-            $sql .= " AND (full_name LIKE '%$search%' OR specialty LIKE '%$search%')";
+            $like = "%$search%";
+            $stmt = $conn->prepare("SELECT * FROM users WHERE role='doctor' AND (full_name LIKE ? OR specialty LIKE ?)");
+            $stmt->bind_param("ss", $like, $like);
+        } else {
+            $stmt = $conn->prepare("SELECT * FROM users WHERE role='doctor'");
         }
-        $doctors = $conn->query($sql);
+        $stmt->execute();
+        $doctors = $stmt->get_result();
         ?>
+
+        <?php if (isset($_GET['msg']) && $_GET['msg'] == 'has_appointments'): ?>
+            <div class="alert alert-error">This doctor has appointments on record and cannot be deleted. Edit the doctor instead.</div>
+        <?php endif; ?>
 
         <h3>Search doctors</h3>
         <form method="GET" action="admin_home.php" class="inline-form">
@@ -337,9 +367,10 @@ $total_feedback = $conn->query("SELECT COUNT(*) as c FROM feedback")->fetch_asso
                 <th>Doctor</th>
                 <th>Specialty</th>
                 <th>Status</th>
+                <th>Doctor feedback</th>
             </tr>
             <?php if ($appts->num_rows == 0): ?>
-                <tr><td colspan="6">No appointments found.</td></tr>
+                <tr><td colspan="7">No appointments found.</td></tr>
             <?php else: ?>
                 <?php while($row = $appts->fetch_assoc()): ?>
                 <tr>
@@ -349,6 +380,7 @@ $total_feedback = $conn->query("SELECT COUNT(*) as c FROM feedback")->fetch_asso
                     <td><?php echo htmlspecialchars($row['doctor_name']); ?></td>
                     <td><?php echo htmlspecialchars($row['specialty']); ?></td>
                     <td><?php echo htmlspecialchars($row['status']); ?></td>
+                    <td><?php echo (isset($row['doctor_feedback']) && $row['doctor_feedback'] != '') ? htmlspecialchars($row['doctor_feedback']) : '-'; ?></td>
                 </tr>
                 <?php endwhile; ?>
             <?php endif; ?>
